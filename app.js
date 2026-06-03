@@ -459,7 +459,7 @@ async function saveSalary() {
 }
 
 async function copyTemplate() {
-  const confirmed = window.confirm(
+  const confirmed = await confirmModal(
     `Salin template dari bulan sebelumnya ke ${periodLabel()}? Data salary bulan ini akan diisi dari template bulan lalu.`
   );
   if (!confirmed) return;
@@ -492,7 +492,7 @@ async function saveMasterRow(row) {
 
 async function deleteMasterRow(row) {
   const name = row.querySelector(".master-name").value.trim();
-  if (!window.confirm(`Nonaktifkan karyawan ${name}?`)) return;
+  if (!(await confirmModal(`Nonaktifkan karyawan ${name}?`))) return;
   await api(`/api/employees/${row.dataset.id}`, { method: "DELETE" });
   showToast("Karyawan dinonaktifkan.");
   await refreshEmployees();
@@ -500,8 +500,8 @@ async function deleteMasterRow(row) {
 }
 
 async function addEmployee() {
-  const name = window.prompt("Nama karyawan baru");
-  if (!name || !name.trim()) return;
+  const name = await promptModal("Nama karyawan baru");
+  if (!name) return;
   await api("/api/employees", {
     method: "POST",
     body: JSON.stringify({
@@ -542,6 +542,52 @@ function confirmUpload(processed) {
     const onNo = () => { cleanup(); resolve(false); };
     yes.addEventListener("click", onYes);
     no.addEventListener("click", onNo);
+  });
+}
+
+function confirmModal(message) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("modalConfirm");
+    const msg = document.getElementById("confirmMessage");
+    const yes = document.getElementById("confirmYes");
+    const no = document.getElementById("confirmNo");
+    msg.textContent = message;
+    modal.classList.add("visible");
+    const cleanup = () => {
+      modal.classList.remove("visible");
+      yes.removeEventListener("click", onYes);
+      no.removeEventListener("click", onNo);
+    };
+    const onYes = () => { cleanup(); resolve(true); };
+    const onNo = () => { cleanup(); resolve(false); };
+    yes.addEventListener("click", onYes);
+    no.addEventListener("click", onNo);
+  });
+}
+
+function promptModal(message, defaultValue = "") {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("modalPrompt");
+    const msg = document.getElementById("promptMessage");
+    const input = document.getElementById("promptInput");
+    const ok = document.getElementById("promptOk");
+    const cancel = document.getElementById("promptCancel");
+    msg.textContent = message;
+    input.value = defaultValue;
+    modal.classList.add("visible");
+    input.focus();
+    const cleanup = () => {
+      modal.classList.remove("visible");
+      ok.removeEventListener("click", onOk);
+      cancel.removeEventListener("click", onCancel);
+      input.removeEventListener("keydown", onKey);
+    };
+    const onOk = () => { const val = input.value.trim(); cleanup(); resolve(val || null); };
+    const onCancel = () => { cleanup(); resolve(null); };
+    const onKey = (e) => { if (e.key === "Enter") onOk(); if (e.key === "Escape") onCancel(); };
+    ok.addEventListener("click", onOk);
+    cancel.addEventListener("click", onCancel);
+    input.addEventListener("keydown", onKey);
   });
 }
 
@@ -679,7 +725,7 @@ function attachEvents() {
     }
 
     if (event.target.closest("#clearMonthBtn")) {
-      if (!window.confirm("Kosongkan semua field salary bulan ini?")) return;
+      if (!(await confirmModal("Kosongkan semua field salary bulan ini?"))) return;
       state.salaries.forEach((salary) => {
         salaryFields.forEach((field) => {
           salary[field] = 0;

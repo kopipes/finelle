@@ -266,6 +266,29 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modalConfirm">
+    <div class="modal-notification modal-confirm">
+      <span class="material-symbols-outlined">help</span>
+      <p id="confirmMessage">Konfirmasi</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:18px;">
+        <button id="confirmNo" class="secondary-button">Batal</button>
+        <button id="confirmYes" class="primary-button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalPrompt">
+    <div class="modal-notification modal-prompt">
+      <span class="material-symbols-outlined">help</span>
+      <p id="promptMessage">Input</p>
+      <input id="promptInput" type="text" style="width:100%;margin-top:8px;padding:8px;border-radius:6px;border:1px solid #ddd;">
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+        <button id="promptCancel" class="secondary-button">Batal</button>
+        <button id="promptOk" class="primary-button">OK</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
