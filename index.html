@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finelle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght@300..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-row">
+      <button class="icon-button mobile-menu" id="mobileMenu" aria-label="Buka menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <img src="design/finelle-logo.png" alt="Finelle" class="app-logo" style="height:32px;">
+      <span class="divider"></span>
+      <nav class="top-tabs" aria-label="Menu cepat">
+        <button class="top-tab" data-page="dashboard">Dashboard</button>
+        <button class="top-tab active" data-page="salary">Input Gaji Bulanan</button>
+      </nav>
+    </div>
+    <div class="account-row">
+      <button class="icon-button" aria-label="Notifikasi">
+        <span class="material-symbols-outlined">notifications</span>
+        <span class="dot"></span>
+      </button>
+      <button class="icon-button" aria-label="Pengaturan">
+        <span class="material-symbols-outlined">settings</span>
+      </button>
+      <span class="divider"></span>
+      <label class="role-switcher">
+        <span>Mode akses</span>
+        <select id="roleSelect">
+          <option value="admin">Admin</option>
+          <option value="finance">Finance</option>
+          <option value="corporate">Corporate</option>
+          <option value="user">User</option>
+        </select>
+      </label>
+      <div class="avatar" aria-hidden="true">AF</div>
+    </div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="product-card">
+        <span class="material-symbols-outlined">corporate_fare</span>
+        <div>
+          <strong>Finelle</strong>
+          <small>Payroll Management</small>
+        </div>
+      </div>
+      <nav class="side-nav" aria-label="Navigasi utama">
+        <button data-page="dashboard">
+          <span class="material-symbols-outlined">dashboard</span>
+          Dashboard
+        </button>
+        <button data-page="master">
+          <span class="material-symbols-outlined">badge</span>
+          Master Data
+        </button>
+        <button class="active" data-page="salary">
+          <span class="material-symbols-outlined">payments</span>
+          Salary Input
+        </button>
+        <button data-page="reports">
+          <span class="material-symbols-outlined">assessment</span>
+          Reports
+        </button>
+      </nav>
+      <div class="side-footer">
+        <button>
+          <span class="material-symbols-outlined">help</span>
+          Help Center
+        </button>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <section class="page active" id="page-dashboard" aria-labelledby="dashboardTitle">
+        <div class="page-title">
+          <div>
+            <h2 id="dashboardTitle">Dashboard</h2>
+            <p>Ringkasan payroll bulan aktif dan status data karyawan.</p>
+          </div>
+          <div class="period-control compact"></div>
+        </div>
+        <div class="kpi-grid" id="dashboardKpis"></div>
+        <div class="two-column">
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Distribusi Divisi</h3>
+            </div>
+            <div id="divisionBars" class="bar-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Aktivitas Bulan Ini</h3>
+            </div>
+            <div id="activityList" class="activity-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="page" id="page-master" aria-labelledby="masterTitle">
+        <div class="page-title">
+          <div>
+            <h2 id="masterTitle">Master Data</h2>
+            <p>Kelola nama karyawan, divisi, dan akses aplikasi.</p>
+          </div>
+          <button class="primary-button" id="addEmployeeBtn">
+            <span class="material-symbols-outlined">person_add</span>
+            Tambah Karyawan
+          </button>
+        </div>
+        <div class="access-note" id="masterAccessNote"></div>
+        <section class="panel table-panel">
+          <div class="panel-toolbar">
+            <strong id="employeeCount">LIST KARYAWAN</strong>
+            <div class="search-box">
+              <span class="material-symbols-outlined">search</span>
+              <input id="masterSearch" type="search" placeholder="Cari master data...">
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table master-table">
+              <thead>
+                <tr>
+                  <th>Nama Karyawan</th>
+                  <th>Akses</th>
+                  <th>Divisi</th>
+                  <th class="right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="masterBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="page" id="page-salary" aria-labelledby="salaryTitle">
+        <div class="page-title">
+          <div>
+            <h2 id="salaryTitle">Input Gaji Bulanan</h2>
+            <p>Finance mengisi salary setiap bulan, lalu dapat menyalin template dari bulan sebelumnya.</p>
+          </div>
+          <div class="period-control"></div>
+        </div>
+        <section class="panel table-panel">
+          <div class="panel-toolbar">
+            <strong id="salaryCount">LIST KARYAWAN</strong>
+            <div class="toolbar-actions">
+              <div class="search-box">
+                <span class="material-symbols-outlined">search</span>
+                <input id="salarySearch" type="search" placeholder="Cari nama karyawan...">
+              </div>
+              <button class="secondary-button" id="copyTemplateBtn">
+                <span class="material-symbols-outlined">content_copy</span>
+                Salin Template
+              </button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table salary-table">
+              <thead id="salaryHead">
+                <tr>
+                  <th class="sticky-col">Nama Karyawan</th>
+                  <th>Gaji Pokok</th>
+                  <th>HP</th>
+                  <th>BPJS (PV)</th>
+                  <th>BPJS (Karyawan)</th>
+                  <th>Hutang</th>
+                  <th>Rapel/THR</th>
+                  <th class="right">Total Gaji</th>
+                </tr>
+              </thead>
+              <tbody id="salaryBody"></tbody>
+            </table>
+          </div>
+          <div class="salary-footer">
+            <div class="summary-strip">
+              <div>
+                <small>Total Karyawan</small>
+                <strong id="totalEmployees">0</strong>
+              </div>
+              <span></span>
+              <div>
+                <small>Total Estimasi Payroll</small>
+                <strong id="grandTotal">Rp 0</strong>
+              </div>
+            </div>
+            <div class="footer-actions">
+              <button class="ghost-button" id="resetMonthBtn">Batal</button>
+              <button class="danger-button" id="clearMonthBtn">Kosongkan</button>
+              <button class="primary-button" id="saveSalaryBtn">
+                <span class="material-symbols-outlined">save</span>
+                Simpan Data Gaji
+              </button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="page" id="page-reports" aria-labelledby="reportsTitle">
+        <div class="page-title">
+          <div>
+            <h2 id="reportsTitle">Reports</h2>
+            <p>Total pengeluaran per divisi, termasuk prorata untuk karyawan multi-divisi.</p>
+          </div>
+          <div class="period-control compact"></div>
+        </div>
+        <div class="kpi-grid" id="reportKpis"></div>
+        <section class="panel table-panel">
+          <div class="panel-toolbar">
+            <strong>LAPORAN PER DIVISI</strong>
+            <button class="secondary-button" id="expandReportsBtn">
+              <span class="material-symbols-outlined">unfold_more</span>
+              Expand Semua
+            </button>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table report-table">
+              <thead>
+                <tr>
+                  <th>Divisi</th>
+                  <th class="right">Karyawan</th>
+                  <th class="right">Share FTE</th>
+                  <th class="right">Total Pengeluaran</th>
+                </tr>
+              </thead>
+              <tbody id="reportBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="modalNotification">
+    <div class="modal-notification">
+      <span class="material-symbols-outlined">check_circle</span>
+      <p></p>
+      <button id="modalCloseBtn">OK</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
