@@ -1177,7 +1177,7 @@ thead .sticky-col {
 }
 
 /* ============================================
-   RESPONSIVE
+   RESPONSIVE - TABLET & MOBILE
    ============================================ */
 
 @media (max-width: 1200px) {
@@ -1188,9 +1188,18 @@ thead .sticky-col {
   .two-column {
     grid-template-columns: 1fr;
   }
+  
+  .bar-row {
+    grid-template-columns: 100px 1fr 80px;
+  }
 }
 
+/* Tablet - 768px to 1024px */
 @media (max-width: 1024px) {
+  :root {
+    --topbar-height: 60px;
+  }
+  
   .top-tabs {
     display: none;
   }
@@ -1202,60 +1211,301 @@ thead .sticky-col {
   .sidebar {
     transform: translateX(-100%);
     transition: transform 0.3s ease;
+    width: 280px;
   }
   
   .sidebar.open {
     transform: translateX(0);
   }
   
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    display: none;
+  }
+  
+  .sidebar-overlay.visible {
+    display: block;
+  }
+  
   .workspace {
     margin-left: 0;
+    padding: var(--spacing-lg);
   }
   
   .page-title {
     flex-direction: column;
     gap: var(--spacing-md);
+    align-items: flex-start;
   }
   
   .toolbar-actions {
     flex-wrap: wrap;
+    width: 100%;
   }
   
   .search-box {
     width: 100%;
+    max-width: none;
+  }
+  
+  .period-control {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .salary-table {
+    font-size: 0.8125rem;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
   }
 }
 
+/* Mobile - up to 768px */
 @media (max-width: 768px) {
   .topbar {
     padding: 0 var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+  
+  .brand-row {
+    gap: var(--spacing-sm);
+  }
+  
+  .app-logo {
+    height: 28px;
+  }
+  
+  .divider {
+    display: none;
+  }
+  
+  .account-row {
+    gap: var(--spacing-sm);
   }
   
   .role-switcher span {
     display: none;
   }
   
+  .icon-button {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.6875rem;
+  }
+  
   .workspace {
     padding: var(--spacing-md);
   }
   
+  .page-title h2 {
+    font-size: 1.25rem;
+  }
+  
+  .page-title p {
+    font-size: 0.8125rem;
+  }
+  
   .kpi-grid {
     grid-template-columns: 1fr;
+    gap: var(--spacing-md);
+  }
+  
+  .kpi-card {
+    padding: var(--spacing-md);
+  }
+  
+  .kpi-card strong {
+    font-size: 1.5rem;
+  }
+  
+  .two-column {
+    gap: var(--spacing-md);
+  }
+  
+  .bar-row {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xs);
+  }
+  
+  .bar-row .money {
+    text-align: left;
+    font-size: 0.75rem;
   }
   
   .salary-footer {
     flex-direction: column;
     gap: var(--spacing-md);
+    padding: var(--spacing-md);
+  }
+  
+  .summary-strip {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .summary-strip strong {
+    font-size: 1.25rem;
   }
   
   .footer-actions {
     width: 100%;
-    justify-content: flex-end;
+    flex-direction: column;
+  }
+  
+  .footer-actions button {
+    width: 100%;
+    justify-content: center;
   }
   
   .panel-toolbar {
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     align-items: stretch;
+  }
+  
+  .panel-toolbar strong {
+    text-align: center;
+  }
+  
+  .toolbar-actions {
+    flex-direction: column;
+  }
+  
+  .search-box {
+    width: 100%;
+  }
+  
+  .panel-head {
+    padding: var(--spacing-md);
+  }
+  
+  .data-table {
+    font-size: 0.75rem;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+  
+  .employee-name strong {
+    font-size: 0.8125rem;
+  }
+  
+  .employee-name small {
+    font-size: 0.6875rem;
+  }
+  
+  .currency-field {
+    grid-template-columns: 24px 1fr;
+    max-width: 120px;
+  }
+  
+  .data-input {
+    height: 30px;
+    font-size: 0.75rem;
+  }
+  
+  .sticky-col {
+    min-width: 140px;
+  }
+  
+  .total-cell {
+    min-width: 100px;
+    font-size: 0.75rem;
+  }
+  
+  .modal-notification {
+    margin: var(--spacing-md);
+    min-width: auto;
+    width: calc(100% - 32px);
+  }
+}
+
+/* Small Mobile - up to 480px */
+@media (max-width: 480px) {
+  :root {
+    --topbar-height: 56px;
+    --spacing-xl: 16px;
+    --spacing-lg: 12px;
+  }
+  
+  .workspace {
+    padding: var(--spacing-sm);
+  }
+  
+  .page-title {
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .kpi-card {
+    padding: var(--spacing-sm);
+  }
+  
+  .kpi-card strong {
+    font-size: 1.25rem;
+  }
+  
+  .data-table {
+    font-size: 0.6875rem;
+  }
+  
+  .data-table th,
+  .data-table td {
+    padding: var(--spacing-xs);
+  }
+  
+  .currency-field {
+    grid-template-columns: 20px 1fr;
+    max-width: 100px;
+  }
+  
+  .currency-field span {
+    font-size: 0.625rem;
+  }
+  
+  .data-input {
+    height: 26px;
+    font-size: 0.6875rem;
+    padding: 0 4px;
+  }
+  
+  .sticky-col {
+    min-width: 120px;
+  }
+  
+  .total-cell {
+    min-width: 80px;
+    font-size: 0.6875rem;
+  }
+  
+  .hidden-cell {
+    display: none;
+  }
+  
+  .report-toggle {
+    font-size: 0.8125rem;
+  }
+  
+  .summary-strip small {
+    font-size: 0.625rem;
+  }
+  
+  .summary-strip strong {
+    font-size: 1rem;
   }
 }

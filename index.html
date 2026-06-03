@@ -8,8 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght@300..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  
   <header class="topbar">
     <div class="brand-row">
       <button class="icon-button mobile-menu" id="mobileMenu" aria-label="Buka menu">
@@ -157,6 +160,11 @@
                 <span class="material-symbols-outlined">search</span>
                 <input id="salarySearch" type="search" placeholder="Cari nama karyawan...">
               </div>
+              <input type="file" id="uploadExcel" accept=".xlsx,.xls,.csv" style="display:none;">
+              <button class="secondary-button" id="uploadExcelBtn">
+                <span class="material-symbols-outlined">upload</span>
+                Upload Excel
+              </button>
               <button class="secondary-button" id="copyTemplateBtn">
                 <span class="material-symbols-outlined">content_copy</span>
                 Salin Template
@@ -170,8 +178,8 @@
                   <th class="sticky-col">Nama Karyawan</th>
                   <th>Gaji Pokok</th>
                   <th>HP</th>
-                  <th>BPJS (PV)</th>
                   <th>BPJS (Karyawan)</th>
+                  <th>BPJS (PV)</th>
                   <th>Hutang</th>
                   <th>Rapel/THR</th>
                   <th class="right">Total Gaji</th>
@@ -244,6 +252,17 @@
       <span class="material-symbols-outlined">check_circle</span>
       <p></p>
       <button id="modalCloseBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalConfirmUpload">
+    <div class="modal-notification modal-confirm">
+      <span class="material-symbols-outlined">help</span>
+      <p id="confirmUploadMessage">Preview</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:18px;">
+        <button id="confirmUploadNo" class="secondary-button">Batal</button>
+        <button id="confirmUploadYes" class="primary-button">Upload</button>
+      </div>
     </div>
   </div>
 

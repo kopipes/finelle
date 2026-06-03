@@ -13,8 +13,8 @@ const state = {
 const salaryFields = [
   "base_salary",
   "phone_quota",
-  "bpjs_kantor",
   "bpjs_sendiri",
+  "bpjs_kantor",
   "debt",
   "rapel_thr",
 ];
@@ -459,6 +459,11 @@ async function saveSalary() {
 }
 
 async function copyTemplate() {
+  const confirmed = window.confirm(
+    `Salin template dari bulan sebelumnya ke ${periodLabel()}? Data salary bulan ini akan diisi dari template bulan lalu.`
+  );
+  if (!confirmed) return;
+
   const payload = await api("/api/copy-template", {
     method: "POST",
     body: JSON.stringify({ period: state.period }),
@@ -519,6 +524,105 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function confirmUpload(processed) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("modalConfirmUpload");
+    const message = document.getElementById("confirmUploadMessage");
+    const yes = document.getElementById("confirmUploadYes");
+    const no = document.getElementById("confirmUploadNo");
+    const previewRows = processed.slice(0, 3).map((r) => `${r.name}: ${formatCurrency(r.base_salary)}`);
+    message.textContent = `Preview ${processed.length} rows — ${previewRows.join(' • ')}`;
+    modal.classList.add("visible");
+    const cleanup = () => {
+      modal.classList.remove("visible");
+      yes.removeEventListener("click", onYes);
+      no.removeEventListener("click", onNo);
+    };
+    const onYes = () => { cleanup(); resolve(true); };
+    const onNo = () => { cleanup(); resolve(false); };
+    yes.addEventListener("click", onYes);
+    no.addEventListener("click", onNo);
+  });
+}
+
+async function uploadExcel(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet);
+        
+        // Make header matching tolerant: normalize header keys
+        const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const headerMap = {};
+        if (json.length > 0) {
+          Object.keys(json[0]).forEach((k) => {
+            headerMap[norm(k)] = k;
+          });
+        }
+
+        const getField = (row, variants) => {
+          for (const v of variants) {
+            const key = headerMap[norm(v)];
+            if (key && row[key] !== undefined) return row[key];
+            // fallback direct lookup
+            if (row[v] !== undefined) return row[v];
+          }
+          return undefined;
+        };
+
+        // Expected columns: Nama Karyawan, Gaji Pokok, HP, BPJS (PV), BPJS (Karyawan), Hutang, Rapel/THR, Divisi
+        const processed = json.map((row) => {
+          // Extract division (may contain multiple separated by comma/semicolon/pipe)
+          const divRaw = String(getField(row, ["Divisi", "divisi"]) || "").trim();
+          const divisions = divRaw ? divRaw.split(/[,;|]+/).map((d) => d.trim()).filter(Boolean) : [];
+          
+          // Parse numeric fields
+          const parseNum = (val) => {
+            if (typeof val === "number") return val;
+            if (!val) return 0;
+            // Remove currency symbols and non-digit characters (keep minus and dot)
+            const cleaned = String(val).replace(/[^0-9\-\.,]/g, "").replace(/\./g, "").replace(/,/g, "");
+            return parseFloat(cleaned) || 0;
+          };
+          
+          return {
+            name: String(getField(row, ["Nama Karyawan", "Nama", "nama"]) || "").trim(),
+            base_salary: parseNum(getField(row, ["Gaji Pokok", "Gaji", "gaji pokok"]) || getField(row, ["Gaji Pokok (Rp)"])),
+            phone_quota: parseNum(getField(row, ["HP", "Kuota HP", "hp"])),
+            bpjs_sendiri: parseNum(getField(row, ["BPJS (PV)", "BPJS Sendiri", "BPJS PV", "bpjs pv"])),
+            bpjs_kantor: parseNum(getField(row, ["BPJS (Karyawan)", "BPJS Kantor", "BPJS Karyawan"])),
+            debt: parseNum(getField(row, ["Hutang", "hutang"])),
+            rapel_thr: parseNum(getField(row, ["Rapel/THR", "Rapel", "THR"])),
+            divisions: divisions,
+          };
+        }).filter((row) => row.name); // Only keep rows with names
+        if (processed.length === 0) {
+          throw new Error("Tidak ada data karyawan ditemukan di Excel. Pastikan kolom 'Nama Karyawan' ada.");
+        }
+        // Ask for confirmation before sending (show modal confirm)
+        const ok = await confirmUpload(processed);
+        if (!ok) throw new Error("Upload dibatalkan oleh pengguna");
+
+        // Send to server
+        const result = await api("/api/upload-excel", {
+          method: "POST",
+          body: JSON.stringify({ data: processed, period: state.period }),
+        });
+        
+        resolve(result);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error("Gagal membaca file"));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 function attachEvents() {
   // Modal close button
   document.getElementById("modalCloseBtn").addEventListener("click", closeModal);
@@ -526,17 +630,26 @@ function attachEvents() {
     if (e.target.id === "modalNotification") closeModal();
   });
   
+  // Sidebar overlay click to close
+  document.getElementById("sidebarOverlay").addEventListener("click", () => {
+    $("#sidebar").classList.remove("open");
+    $("#sidebarOverlay").classList.remove("visible");
+  });
+  
   document.addEventListener("click", async (event) => {
+    
+    // Mobile menu toggle
+    if (event.target.closest("#mobileMenu")) {
+      const isOpen = $("#sidebar").classList.toggle("open");
+      $("#sidebarOverlay").classList.toggle("visible", isOpen);
+      return;
+    }
     const nav = event.target.closest("[data-page]");
     if (nav) {
       state.page = nav.dataset.page;
       $("#sidebar").classList.remove("open");
+      $("#sidebarOverlay").classList.remove("visible");
       await loadCurrentPage();
-      return;
-    }
-
-    if (event.target.closest("#mobileMenu")) {
-      $("#sidebar").classList.toggle("open");
       return;
     }
 
@@ -625,6 +738,30 @@ function attachEvents() {
         : new Set();
       renderReports();
     }
+    
+    // Upload Excel button
+    if (event.target.closest("#uploadExcelBtn")) {
+      $("#uploadExcel").click();
+    }
+  });
+  
+  // File input change handler
+  document.getElementById("uploadExcel").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      showToast("Memproses file Excel...");
+      const result = await uploadExcel(file);
+      state.salaries = result.rows;
+      renderSalary();
+      showToast(`Berhasil! ${result.created} karyawan baru, ${result.updated} diupdate.`);
+    } catch (error) {
+      showToast(error.message, true);
+    }
+    
+    // Reset file input
+    e.target.value = "";
   });
 
   document.addEventListener("change", async (event) => {
