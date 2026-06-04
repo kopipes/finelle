@@ -520,7 +520,7 @@ async function addEmployee() {
       name: name.trim(),
       access_role: "user",
       divisions: [state.bootstrap.divisions[0].name],
-      can_login: true,
+      can_login: false,
     }),
   });
   showToast("Karyawan baru ditambahkan.");
