@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS employees (
   name VARCHAR(160) NOT NULL,
   username VARCHAR(160) NOT NULL,
   password TEXT NOT NULL,
+  can_login BOOLEAN NOT NULL DEFAULT TRUE,
   access_role ENUM('admin', 'corporate', 'finance', 'user') NOT NULL DEFAULT 'user',
   active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

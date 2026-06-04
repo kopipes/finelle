@@ -156,6 +156,8 @@ def ensure_employee_auth_columns(conn):
         conn.execute("ALTER TABLE employees ADD COLUMN username TEXT NOT NULL DEFAULT ''")
     if "password" not in columns:
         conn.execute("ALTER TABLE employees ADD COLUMN password TEXT NOT NULL DEFAULT ''")
+    if "can_login" not in columns:
+        conn.execute("ALTER TABLE employees ADD COLUMN can_login INTEGER NOT NULL DEFAULT 1")
     rows = conn.execute("SELECT id, name, username, password FROM employees ORDER BY id").fetchall()
     used_usernames = {
         row[0]
@@ -191,6 +193,8 @@ def ensure_employee_auth_columns(conn):
                 (username, employee_id),
             )
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_username ON employees(username)")
+    # Ensure can_login is set for existing rows
+    conn.execute("UPDATE employees SET can_login = 1 WHERE can_login IS NULL OR can_login = ''")
 
 
 def connect():
@@ -298,7 +302,7 @@ def get_divisions(conn):
 def get_employees(conn):
     rows = conn.execute(
         """
-        SELECT e.id, e.name, e.username, e.password, e.access_role, e.active,
+        SELECT e.id, e.name, e.username, e.password, e.can_login, e.access_role, e.active,
                COALESCE(GROUP_CONCAT(d.name, '||'), '') AS division_names
         FROM employees e
         LEFT JOIN employee_divisions ed ON ed.employee_id = e.id
@@ -615,12 +619,14 @@ class AppHandler(BaseHTTPRequestHandler):
                         raise ValueError("Nama karyawan wajib diisi")
                     username = unique_username(conn, name)
                     password = (payload.get("password") or username).strip() or username
+                    can_login = 1 if payload.get("can_login", True) else 0
                     cursor = conn.execute(
-                        "INSERT INTO employees (name, username, password, access_role) VALUES (?, ?, ?, ?)",
+                        "INSERT INTO employees (name, username, password, can_login, access_role) VALUES (?, ?, ?, ?, ?)",
                         (
                             name,
                             username,
                             password,
+                            can_login,
                             payload.get("access_role", "user"),
                         ),
                     )
@@ -633,6 +639,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     name = payload.get("name", "").strip()
                     role = payload.get("access_role", "user")
                     password = payload.get("password", "").strip()
+                    can_login = 1 if payload.get("can_login", True) else 0
                     if not name:
                         raise ValueError("Nama karyawan wajib diisi")
                     if role not in {"admin", "corporate", "finance", "user"}:
@@ -646,10 +653,10 @@ class AppHandler(BaseHTTPRequestHandler):
                     conn.execute(
                         """
                         UPDATE employees
-                        SET name = ?, username = ?, password = ?, access_role = ?, updated_at = CURRENT_TIMESTAMP
+                        SET name = ?, username = ?, password = ?, can_login = ?, access_role = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                         """,
-                        (name, username, password, role, employee_id),
+                        (name, username, password, can_login, role, employee_id),
                     )
                     sync_employee_divisions(conn, employee_id, payload.get("divisions") or [])
                     conn.commit()

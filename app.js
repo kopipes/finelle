@@ -297,6 +297,9 @@ function renderMaster() {
         <input class="inline-input master-password" type="text" value="${escapeHtml(employee.password || "")}" ${isAdmin ? "" : "disabled"}>
       </td>
       <td>
+        <label class="checkbox"><input type="checkbox" class="master-canlogin" ${employee.can_login ? "checked" : ""} ${isAdmin ? "" : "disabled"}></label>
+      </td>
+      <td>
         <select class="inline-select master-role" ${isAdmin ? "" : "disabled"}>
           ${Object.entries(roleLabels).map(([value, label]) => `
             <option value="${value}" ${employee.access_role === value ? "selected" : ""}>${label}</option>
@@ -322,7 +325,7 @@ function renderMaster() {
         </button>
       </td>
     </tr>
-  `).join("") || `<tr><td colspan="6" class="empty-state">Data tidak ditemukan.</td></tr>`;
+  `).join("") || `<tr><td colspan="7" class="empty-state">Data tidak ditemukan.</td></tr>`;
 }
 
 function renderSalary() {
@@ -486,6 +489,7 @@ async function saveMasterRow(row) {
   const payload = {
     name: row.querySelector(".master-name").value.trim(),
     password: row.querySelector(".master-password").value,
+    can_login: !!row.querySelector(".master-canlogin").checked,
     access_role: row.querySelector(".master-role").value,
     divisions,
   };
@@ -516,6 +520,7 @@ async function addEmployee() {
       name: name.trim(),
       access_role: "user",
       divisions: [state.bootstrap.divisions[0].name],
+      can_login: true,
     }),
   });
   showToast("Karyawan baru ditambahkan.");
