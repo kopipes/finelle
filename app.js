@@ -812,6 +812,32 @@ function attachEvents() {
     if (event.target.closest("#uploadExcelBtn")) {
       $("#uploadExcel").click();
     }
+
+    if (event.target.closest("#loginSubmit")) {
+      const username = $("#loginUsername").value.trim();
+      const password = $("#loginPassword").value;
+      try {
+        const payload = await api("/api/login", {
+          method: "POST",
+          body: JSON.stringify({ username, password }),
+        });
+        state.role = payload.access_role;
+        localStorage.setItem("finelle_role", state.role);
+        showToast(`Login sukses: ${state.role}`);
+        await loadCurrentPage();
+      } catch (err) {
+        showToast(err.message, true);
+      }
+      return;
+    }
+
+    if (event.target.closest("#logoutBtn")) {
+      localStorage.removeItem("finelle_role");
+      state.role = "user";
+      showToast("Logout berhasil");
+      await loadCurrentPage();
+      return;
+    }
   });
   
   // File input change handler

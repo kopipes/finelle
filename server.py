@@ -633,6 +633,32 @@ class AppHandler(BaseHTTPRequestHandler):
                     sync_employee_divisions(conn, cursor.lastrowid, divisions)
                     conn.commit()
                     self.send_json({"ok": True, "employees": get_employees(conn)})
+                elif path == "/api/login" and method == "POST":
+                    payload = payload or {}
+                    username = (payload.get("username") or "").strip()
+                    password = (payload.get("password") or "").strip()
+                    if not username or not password:
+                        raise ValueError("Username dan password wajib diisi")
+                    row = conn.execute(
+                        "SELECT id, username, password, access_role, can_login, active FROM employees WHERE username = ?",
+                        (username,),
+                    ).fetchone()
+                    if not row:
+                        raise ValueError("User tidak ditemukan")
+                    if not row[5]:
+                        raise PermissionError("Akun tidak aktif")
+                    if not row[4]:
+                        raise PermissionError("Akun tidak diberi akses login")
+                    if password != row[2]:
+                        raise PermissionError("Password salah")
+                    # set a simple cookie with user id (insecure, kept minimal)
+                    body = json.dumps({"ok": True, "id": row[0], "username": row[1], "access_role": row[3]}, ensure_ascii=False).encode("utf-8")
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.send_header("Set-Cookie", f"finelle_user={row[0]}; Path=/")
+                    self.end_headers()
+                    self.wfile.write(body)
                 elif path.startswith("/api/employees/") and method == "PUT":
                     require_role(self, {"admin"})
                     employee_id = int(path.rsplit("/", 1)[1])
