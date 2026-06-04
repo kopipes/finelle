@@ -3,8 +3,10 @@ from urllib.parse import parse_qs, urlparse
 import json
 import mimetypes
 import os
+import re
 import sqlite3
 import sys
+import unicodedata
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -121,6 +123,76 @@ SALARY_FIELDS = [
 ]
 
 
+def normalize_username(value):
+    text = unicodedata.normalize("NFKD", str(value or "")).lower()
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    parts = [re.sub(r"[^a-z0-9]", "", part) for part in text.split()]
+    parts = [part for part in parts if part]
+    return ".".join(parts)
+
+
+def unique_username(conn, name, exclude_employee_id=None):
+    base = normalize_username(name) or "user"
+    params = []
+    query = "SELECT username FROM employees WHERE username IS NOT NULL AND username != ''"
+    if exclude_employee_id is not None:
+        query += " AND id != ?"
+        params.append(exclude_employee_id)
+    existing = {
+        row[0]
+        for row in conn.execute(query, params).fetchall()
+    }
+    if base not in existing:
+        return base
+    counter = 2
+    while f"{base}.{counter}" in existing:
+        counter += 1
+    return f"{base}.{counter}"
+
+
+def ensure_employee_auth_columns(conn):
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(employees)").fetchall()}
+    if "username" not in columns:
+        conn.execute("ALTER TABLE employees ADD COLUMN username TEXT NOT NULL DEFAULT ''")
+    if "password" not in columns:
+        conn.execute("ALTER TABLE employees ADD COLUMN password TEXT NOT NULL DEFAULT ''")
+    rows = conn.execute("SELECT id, name, username, password FROM employees ORDER BY id").fetchall()
+    used_usernames = {
+        row[0]
+        for row in conn.execute(
+            "SELECT username FROM employees WHERE username IS NOT NULL AND username != ''"
+        ).fetchall()
+        if row[0]
+    }
+    for row in rows:
+        employee_id = row[0]
+        name = row[1]
+        username = row[2] or ""
+        password = row[3] or ""
+        desired_username = normalize_username(name) or "user"
+        if not username or username == "" or username != desired_username:
+            candidate = desired_username
+            counter = 2
+            while candidate in used_usernames and candidate != username:
+                candidate = f"{desired_username}.{counter}"
+                counter += 1
+            used_usernames.discard(username)
+            used_usernames.add(candidate)
+            username = candidate
+            if not password:
+                password = candidate
+            conn.execute(
+                "UPDATE employees SET username = ?, password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (username, password or candidate, employee_id),
+            )
+        elif not password:
+            conn.execute(
+                "UPDATE employees SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                (username, employee_id),
+            )
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_username ON employees(username)")
+
+
 def connect():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -133,6 +205,7 @@ def init_db():
     with connect() as conn:
         with open(SCHEMA_PATH, "r", encoding="utf-8") as schema:
             conn.executescript(schema.read())
+        ensure_employee_auth_columns(conn)
 
         if conn.execute("SELECT COUNT(*) FROM divisions").fetchone()[0] == 0:
             conn.executemany(
@@ -147,9 +220,10 @@ def init_db():
                 for row in conn.execute("SELECT id, name FROM divisions")
             }
             for employee in SEED_EMPLOYEES:
+                username = unique_username(conn, employee["name"])
                 cursor = conn.execute(
-                    "INSERT INTO employees (name, access_role) VALUES (?, ?)",
-                    (employee["name"], employee["access_role"]),
+                    "INSERT INTO employees (name, username, password, access_role) VALUES (?, ?, ?, ?)",
+                    (employee["name"], username, username, employee["access_role"]),
                 )
                 employee_id = cursor.lastrowid
                 conn.executemany(
@@ -224,7 +298,7 @@ def get_divisions(conn):
 def get_employees(conn):
     rows = conn.execute(
         """
-        SELECT e.id, e.name, e.access_role, e.active,
+        SELECT e.id, e.name, e.username, e.password, e.access_role, e.active,
                COALESCE(GROUP_CONCAT(d.name, '||'), '') AS division_names
         FROM employees e
         LEFT JOIN employee_divisions ed ON ed.employee_id = e.id
@@ -536,10 +610,17 @@ class AppHandler(BaseHTTPRequestHandler):
                 elif path == "/api/employees" and method == "POST":
                     require_role(self, {"admin"})
                     divisions = payload.get("divisions") or []
+                    name = payload.get("name", "").strip()
+                    if not name:
+                        raise ValueError("Nama karyawan wajib diisi")
+                    username = unique_username(conn, name)
+                    password = (payload.get("password") or username).strip() or username
                     cursor = conn.execute(
-                        "INSERT INTO employees (name, access_role) VALUES (?, ?)",
+                        "INSERT INTO employees (name, username, password, access_role) VALUES (?, ?, ?, ?)",
                         (
-                            payload.get("name", "").strip(),
+                            name,
+                            username,
+                            password,
                             payload.get("access_role", "user"),
                         ),
                     )
@@ -551,17 +632,24 @@ class AppHandler(BaseHTTPRequestHandler):
                     employee_id = int(path.rsplit("/", 1)[1])
                     name = payload.get("name", "").strip()
                     role = payload.get("access_role", "user")
+                    password = payload.get("password", "").strip()
                     if not name:
                         raise ValueError("Nama karyawan wajib diisi")
                     if role not in {"admin", "corporate", "finance", "user"}:
                         raise ValueError("Role tidak valid")
+                    username = unique_username(conn, name, exclude_employee_id=employee_id)
+                    if not password:
+                        password = conn.execute(
+                            "SELECT password FROM employees WHERE id = ?",
+                            (employee_id,),
+                        ).fetchone()[0]
                     conn.execute(
                         """
                         UPDATE employees
-                        SET name = ?, access_role = ?, updated_at = CURRENT_TIMESTAMP
+                        SET name = ?, username = ?, password = ?, access_role = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                         """,
-                        (name, role, employee_id),
+                        (name, username, password, role, employee_id),
                     )
                     sync_employee_divisions(conn, employee_id, payload.get("divisions") or [])
                     conn.commit()

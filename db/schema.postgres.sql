@@ -1,6 +1,8 @@
 CREATE TABLE IF NOT EXISTS employees (
   id BIGSERIAL PRIMARY KEY,
   name VARCHAR(160) NOT NULL UNIQUE,
+  username VARCHAR(160) NOT NULL UNIQUE,
+  password TEXT NOT NULL DEFAULT '',
   access_role VARCHAR(20) NOT NULL DEFAULT 'user'
     CHECK (access_role IN ('admin', 'corporate', 'finance', 'user')),
   active BOOLEAN NOT NULL DEFAULT TRUE,

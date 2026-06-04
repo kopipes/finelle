@@ -275,6 +275,7 @@ function renderMaster() {
   const search = $("#masterSearch").value.trim().toLowerCase();
   const employees = state.employees.filter((employee) =>
     employee.name.toLowerCase().includes(search) ||
+    (employee.username || "").toLowerCase().includes(search) ||
     employee.divisions.join(" ").toLowerCase().includes(search) ||
     employee.access_role.includes(search)
   );
@@ -288,6 +289,12 @@ function renderMaster() {
     <tr data-id="${employee.id}">
       <td>
         <input class="inline-input master-name" value="${escapeHtml(employee.name)}" ${isAdmin ? "" : "disabled"}>
+      </td>
+      <td>
+        <input class="inline-input master-username" value="${escapeHtml(employee.username || "")}" disabled>
+      </td>
+      <td>
+        <input class="inline-input master-password" type="text" value="${escapeHtml(employee.password || "")}" ${isAdmin ? "" : "disabled"}>
       </td>
       <td>
         <select class="inline-select master-role" ${isAdmin ? "" : "disabled"}>
@@ -315,7 +322,7 @@ function renderMaster() {
         </button>
       </td>
     </tr>
-  `).join("") || `<tr><td colspan="4" class="empty-state">Data tidak ditemukan.</td></tr>`;
+  `).join("") || `<tr><td colspan="6" class="empty-state">Data tidak ditemukan.</td></tr>`;
 }
 
 function renderSalary() {
@@ -478,6 +485,7 @@ async function saveMasterRow(row) {
   const divisions = [...row.querySelectorAll(".division-chip input:checked")].map((item) => item.value);
   const payload = {
     name: row.querySelector(".master-name").value.trim(),
+    password: row.querySelector(".master-password").value,
     access_role: row.querySelector(".master-role").value,
     divisions,
   };
@@ -513,6 +521,16 @@ async function addEmployee() {
   showToast("Karyawan baru ditambahkan.");
   await refreshEmployees();
   renderMaster();
+}
+
+function generateUsername(name) {
+  return String(name || "")
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((part) => part.replace(/[^a-z0-9]/g, ""))
+    .filter(Boolean)
+    .join(".");
 }
 
 function escapeHtml(value) {
@@ -837,6 +855,15 @@ function attachEvents() {
 
     if (event.target.matches("#masterSearch")) {
       renderMaster();
+      return;
+    }
+
+    if (event.target.matches(".master-name")) {
+      const row = event.target.closest("tr");
+      const usernameInput = row.querySelector(".master-username");
+      if (usernameInput) {
+        usernameInput.value = generateUsername(event.target.value);
+      }
       return;
     }
 

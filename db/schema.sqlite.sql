@@ -3,6 +3,8 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS employees (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL DEFAULT '',
   access_role TEXT NOT NULL DEFAULT 'user'
     CHECK (access_role IN ('admin', 'corporate', 'finance', 'user')),
   active INTEGER NOT NULL DEFAULT 1,

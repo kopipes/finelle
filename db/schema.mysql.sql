@@ -1,11 +1,14 @@
 CREATE TABLE IF NOT EXISTS employees (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   name VARCHAR(160) NOT NULL,
+  username VARCHAR(160) NOT NULL,
+  password TEXT NOT NULL,
   access_role ENUM('admin', 'corporate', 'finance', 'user') NOT NULL DEFAULT 'user',
   active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
+  UNIQUE KEY uq_employees_username (username),
   UNIQUE KEY uq_employees_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
