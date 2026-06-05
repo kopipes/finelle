@@ -24,7 +24,7 @@ const roleViewFields = {
   admin: salaryFields,
   finance: salaryFields,
   corporate: salaryFields,
-  user: ["base_salary", "bpjs_kantor", "bpjs_sendiri"],
+  user: ["bpjs_kantor", "bpjs_sendiri"],
 };
 
 // Fields each role can edit
@@ -157,12 +157,31 @@ function renderPeriodControls() {
   });
 }
 
+const pageRoles = {
+  dashboard: ["admin", "finance", "corporate"],
+  master: ["admin", "finance", "corporate"],
+  salary: ["admin", "finance", "corporate", "user"],
+  reports: ["admin", "finance", "corporate"],
+  login: ["admin", "finance", "corporate"],
+};
+
+function getVisiblePages() {
+  return Object.entries(pageRoles)
+    .filter(([page, roles]) => roles.includes(state.role))
+    .map(([page]) => page);
+}
+
 function syncNavigation() {
   $all("[data-page]").forEach((button) => {
-    button.classList.toggle("active", button.dataset.page === state.page);
+    const page = button.dataset.page;
+    const visible = pageRoles[page]?.includes(state.role) ?? false;
+    button.style.display = visible ? "" : "none";
+    button.classList.toggle("active", page === state.page);
   });
   $all(".page").forEach((page) => page.classList.remove("active"));
-  $(`#page-${state.page}`).classList.add("active");
+  const targetPage = pageRoles[state.page]?.includes(state.role) ? state.page : "salary";
+  $(`#page-${targetPage}`).classList.add("active");
+  if (state.page !== targetPage) state.page = targetPage;
 }
 
 async function loadBootstrap() {
@@ -331,6 +350,7 @@ function renderMaster() {
 function renderSalary() {
   const viewFields = roleViewFields[state.role] || [];
   const editFields = roleEditFields[state.role] || [];
+  const showTotal = ["admin", "finance", "corporate"].includes(state.role);
   const search = $("#salarySearch").value.trim().toLowerCase();
   const rows = state.salaries.filter((row) => row.name.toLowerCase().includes(search));
 
@@ -342,6 +362,12 @@ function renderSalary() {
   $("#copyTemplateBtn").disabled = !canCopyTemplate;
   $("#saveSalaryBtn").disabled = !canSave;
   $("#resetMonthBtn").disabled = !canReset;
+  
+  // Hide footer for user role
+  const salaryFooter = document.querySelector(".salary-footer");
+  if (salaryFooter) {
+    salaryFooter.style.display = ["admin", "finance", "corporate"].includes(state.role) ? "" : "none";
+  }
 
   // Update table header based on role
   const headerLabels = {
@@ -362,12 +388,16 @@ function renderSalary() {
       <tr>
         <th class="sticky-col">Nama Karyawan</th>
         ${headerRow}
-        <th class="right">Total Gaji</th>
+        ${showTotal ? '<th class="right">Total Gaji</th>' : '<th class="hidden-cell"></th>'}
       </tr>
     `;
   }
 
-  $("#salaryBody").innerHTML = rows.map((row) => `
+  $("#salaryBody").innerHTML = rows.map((row) => {
+    const totalCol = showTotal 
+      ? `<td class="right money total-cell">${formatCurrency(totalSalary(row))}</td>`
+      : '<td class="hidden-cell"></td>';
+    return `
     <tr data-id="${row.employee_id}">
       <td class="sticky-col">
         <div class="employee-name">
@@ -392,9 +422,10 @@ function renderSalary() {
           </td>
         `;
       }).join("")}
-      <td class="right money total-cell">${formatCurrency(totalSalary(row))}</td>
+      ${totalCol}
     </tr>
-  `).join("") || `<tr><td colspan="8" class="empty-state">Data tidak ditemukan.</td></tr>`;
+  `;
+  }).join("") || `<tr><td colspan="8" class="empty-state">Data tidak ditemukan.</td></tr>`;
 
   renderSalaryFooter(rows);
 }

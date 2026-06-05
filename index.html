@@ -247,33 +247,32 @@
             </table>
           </div>
         </section>
-      </section>
-      <section class="page" id="page-login" aria-labelledby="loginTitle">
-        <div class="page-title">
-          <div>
-            <h2 id="loginTitle">Login</h2>
-            <p>Masuk menggunakan username dan password yang dibuat di Master Data.</p>
-          </div>
-        </div>
-        <section class="panel">
-          <div style="max-width:360px;margin:0 auto;">
-            <div class="form-group">
-              <label>Username</label>
-              <input id="loginUsername" type="text" placeholder="username">
-            </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input id="loginPassword" type="password" placeholder="password">
-            </div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
-              <button id="logoutBtn" class="secondary-button">Logout</button>
-              <button id="loginSubmit" class="primary-button">Login</button>
-            </div>
-          </div>
-        </section>
-      </section>
     </main>
   </div>
+
+  <!-- Login Page - Full screen overlay -->
+  <section class="login-page" id="page-login" aria-labelledby="loginTitle">
+    <div class="login-container">
+      <div class="login-card">
+        <img src="design/finelle-logo.png" alt="Finelle" class="login-logo">
+        <h2>Selamat Datang</h2>
+        <p>Masuk untuk mengakses aplikasi payroll</p>
+        <form id="loginForm">
+          <div class="login-error" id="loginError"></div>
+          <div class="form-group">
+            <label for="loginUsername">Username</label>
+            <input id="loginUsername" type="text" placeholder="Masukkan username" required>
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" type="password" placeholder="Masukkan password" required>
+          </div>
+          <button type="submit" class="login-button" id="loginSubmit">Masuk</button>
+        </form>
+        <p class="login-footer">Belum punya akun? Hubungi administrator.</p>
+      </div>
+    </div>
+  </section>
 
   <div class="modal-overlay" id="modalNotification">
     <div class="modal-notification">
