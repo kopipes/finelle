@@ -1,6 +1,8 @@
 const state = {
   page: "salary",
-  role: localStorage.getItem("finelle_role") || "admin",
+  userId: localStorage.getItem("finelle_user_id") || null,
+  username: localStorage.getItem("finelle_username") || null,
+  role: localStorage.getItem("finelle_role") || null,
   period: localStorage.getItem("finelle_period") || "2026-01",
   bootstrap: null,
   employees: [],
@@ -8,6 +10,7 @@ const state = {
   report: null,
   dashboard: null,
   expandedReports: new Set(),
+  isLoggedIn: !!localStorage.getItem("finelle_user_id"),
 };
 
 const salaryFields = [
@@ -736,6 +739,14 @@ function attachEvents() {
     $("#sidebarOverlay").classList.remove("visible");
   });
   
+  // Login form Enter key handler
+  document.getElementById("loginPassword").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      document.getElementById("loginSubmit").click();
+    }
+  });
+  
   document.addEventListener("click", async (event) => {
     
     // Mobile menu toggle
@@ -845,28 +856,61 @@ function attachEvents() {
     }
 
     if (event.target.closest("#loginSubmit")) {
+      event.preventDefault();
       const username = $("#loginUsername").value.trim();
       const password = $("#loginPassword").value;
+      
+      // Clear previous error
+      const errorDiv = $("#loginError");
+      if (errorDiv) errorDiv.classList.remove("visible");
+      
+      if (!username || !password) {
+        showToast("Username dan password wajib diisi", true);
+        return;
+      }
+      
       try {
-        const payload = await api("/api/login", {
+        const response = await fetch("/api/login", {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username, password }),
         });
+        const payload = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(payload.error || "Login gagal");
+        }
+        
+        state.userId = payload.id;
+        state.username = payload.username;
         state.role = payload.access_role;
+        state.isLoggedIn = true;
+        localStorage.setItem("finelle_user_id", state.userId);
+        localStorage.setItem("finelle_username", state.username);
         localStorage.setItem("finelle_role", state.role);
         showToast(`Login sukses: ${state.role}`);
+        updateAppView();
         await loadCurrentPage();
       } catch (err) {
+        if (errorDiv) {
+          errorDiv.textContent = err.message;
+          errorDiv.classList.add("visible");
+        }
         showToast(err.message, true);
       }
       return;
     }
 
     if (event.target.closest("#logoutBtn")) {
+      localStorage.removeItem("finelle_user_id");
+      localStorage.removeItem("finelle_username");
       localStorage.removeItem("finelle_role");
-      state.role = "user";
+      state.userId = null;
+      state.username = null;
+      state.role = null;
+      state.isLoggedIn = false;
       showToast("Logout berhasil");
-      await loadCurrentPage();
+      updateAppView();
       return;
     }
   });
@@ -947,10 +991,63 @@ function attachEvents() {
   });
 }
 
+function updateAppView() {
+  const loginPage = $("#page-login");
+  const appShell = $(".shell");
+  const topbar = $(".topbar");
+  
+  if (state.isLoggedIn) {
+    // Show app, hide login page
+    loginPage.classList.remove("active");
+    appShell.style.display = "";
+    topbar.style.display = "";
+    
+    // Update avatar and show logout button
+    const avatar = $("#avatarDisplay");
+    if (avatar && state.username) {
+      const initials = state.username.split(".").map(p => p[0] || "").join("").toUpperCase().slice(0, 2);
+      avatar.textContent = initials || state.username.slice(0, 2).toUpperCase();
+    }
+    
+    // Hide role switcher, login button, and non-functional icons using IDs
+    $("#roleSwitcher").style.display = "none";
+    $("#loginPageBtn").style.display = "none";
+    $("#notificationsBtn").style.display = "none";
+    $("#settingsBtn").style.display = "none";
+    $("#helpCenterBtn").style.display = "none";
+    
+    // Add logout button if not exists
+    let logoutBtn = $("#logoutBtn");
+    if (!logoutBtn) {
+      logoutBtn = document.createElement("button");
+      logoutBtn.id = "logoutBtn";
+      logoutBtn.className = "secondary-button";
+      logoutBtn.innerHTML = '<span class="material-symbols-outlined">logout</span> Logout';
+      $(".account-row").appendChild(logoutBtn);
+    }
+  } else {
+    // Hide app, show login page
+    loginPage.classList.add("active");
+    appShell.style.display = "none";
+    topbar.style.display = "none";
+    
+    // Remove logout button
+    const logoutBtn = $("#logoutBtn");
+    if (logoutBtn) logoutBtn.remove();
+  }
+}
+
 async function boot() {
   try {
     attachEvents();
     await loadBootstrap();
+    updateAppView();
+    
+    // If not logged in, show login page and skip loading app content
+    if (!state.isLoggedIn) {
+      return;
+    }
+    
     await loadCurrentPage();
   } catch (error) {
     showToast(error.message, true);

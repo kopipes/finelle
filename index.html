@@ -26,15 +26,15 @@
       </nav>
     </div>
     <div class="account-row">
-      <button class="icon-button" aria-label="Notifikasi">
+      <button class="icon-button" id="notificationsBtn" aria-label="Notifikasi">
         <span class="material-symbols-outlined">notifications</span>
         <span class="dot"></span>
       </button>
-      <button class="icon-button" aria-label="Pengaturan">
+      <button class="icon-button" id="settingsBtn" aria-label="Pengaturan">
         <span class="material-symbols-outlined">settings</span>
       </button>
       <span class="divider"></span>
-      <label class="role-switcher">
+      <label class="role-switcher" id="roleSwitcher">
         <span>Mode akses</span>
         <select id="roleSelect">
           <option value="admin">Admin</option>
@@ -43,8 +43,8 @@
           <option value="user">User</option>
         </select>
       </label>
-      <div class="avatar" aria-hidden="true">AF</div>
-      <button class="primary-button" data-page="login" id="loginPageBtn">Login</button>
+      <div class="avatar" id="avatarDisplay" aria-hidden="true">AF</div>
+      <button class="primary-button" id="loginPageBtn">Login</button>
     </div>
   </header>
 
@@ -76,7 +76,7 @@
         </button>
       </nav>
       <div class="side-footer">
-        <button>
+        <button id="helpCenterBtn">
           <span class="material-symbols-outlined">help</span>
           Help Center
         </button>
@@ -251,7 +251,7 @@
   </div>
 
   <!-- Login Page - Full screen overlay -->
-  <section class="login-page" id="page-login" aria-labelledby="loginTitle">
+  <section class="login-page active" id="page-login" aria-labelledby="loginTitle">
     <div class="login-container">
       <div class="login-card">
         <img src="design/finelle-logo.png" alt="Finelle" class="login-logo">
@@ -267,7 +267,7 @@
             <label for="loginPassword">Password</label>
             <input id="loginPassword" type="password" placeholder="Masukkan password" required>
           </div>
-          <button type="submit" class="login-button" id="loginSubmit">Masuk</button>
+          <button type="button" class="login-button" id="loginSubmit">Masuk</button>
         </form>
         <p class="login-footer">Belum punya akun? Hubungi administrator.</p>
       </div>

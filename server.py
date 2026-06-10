@@ -226,7 +226,7 @@ def init_db():
             for employee in SEED_EMPLOYEES:
                 username = unique_username(conn, employee["name"])
                 cursor = conn.execute(
-                    "INSERT INTO employees (name, username, password, access_role) VALUES (?, ?, ?, ?)",
+                    "INSERT INTO employees (name, username, password, access_role, can_login) VALUES (?, ?, ?, ?, 1)",
                     (employee["name"], username, username, employee["access_role"]),
                 )
                 employee_id = cursor.lastrowid
