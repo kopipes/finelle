@@ -692,14 +692,20 @@ async function uploadExcel(file) {
             return parseFloat(cleaned) || 0;
           };
           
+          // Use null to signal "not present in Excel" vs 0 meaning explicitly zero
+          const getNum = (variants) => {
+            const val = getField(row, variants);
+            return val === undefined || val === null || val === "" ? null : parseNum(val);
+          };
+
           return {
             name: String(getField(row, ["Nama Karyawan", "Nama", "nama"]) || "").trim(),
-            base_salary: parseNum(getField(row, ["Gaji Pokok", "Gaji", "gaji pokok"]) || getField(row, ["Gaji Pokok (Rp)"])),
-            phone_quota: parseNum(getField(row, ["HP", "Kuota HP", "hp"])),
-            bpjs_sendiri: parseNum(getField(row, ["BPJS (PV)", "BPJS Sendiri", "BPJS PV", "bpjs pv"])),
-            bpjs_kantor: parseNum(getField(row, ["BPJS (Karyawan)", "BPJS Kantor", "BPJS Karyawan"])),
-            debt: parseNum(getField(row, ["Hutang", "hutang"])),
-            rapel_thr: parseNum(getField(row, ["Rapel/THR", "Rapel", "THR"])),
+            base_salary: getNum(["Gaji Pokok", "Gaji", "gaji pokok", "Gaji Pokok (Rp)"]),
+            phone_quota: getNum(["HP", "Kuota HP", "hp"]),
+            bpjs_sendiri: getNum(["BPJS (PV)", "BPJS Sendiri", "BPJS PV", "bpjs pv"]),
+            bpjs_kantor: getNum(["BPJS (Karyawan)", "BPJS Kantor", "BPJS Karyawan"]),
+            debt: getNum(["Hutang", "hutang"]),
+            rapel_thr: getNum(["Rapel/THR", "Rapel", "THR"]),
             divisions: divisions,
           };
         }).filter((row) => row.name); // Only keep rows with names
@@ -710,10 +716,15 @@ async function uploadExcel(file) {
         const ok = await confirmUpload(processed);
         if (!ok) throw new Error("Upload dibatalkan oleh pengguna");
 
+        // For user role: only send name, bpjs_sendiri, bpjs_kantor — ignore all other fields
+        const uploadData = state.role === "user"
+          ? processed.map(({ name, bpjs_sendiri, bpjs_kantor }) => ({ name, bpjs_sendiri, bpjs_kantor }))
+          : processed;
+
         // Send to server
         const result = await api("/api/upload-excel", {
           method: "POST",
-          body: JSON.stringify({ data: processed, period: state.period }),
+          body: JSON.stringify({ data: uploadData, period: state.period }),
         });
         
         resolve(result);

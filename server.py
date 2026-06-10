@@ -697,7 +697,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     conn.commit()
                     self.send_json({"ok": True, "employees": get_employees(conn)})
                 elif path == "/api/upload-excel" and method == "POST":
-                    require_role(self, {"admin", "finance"})
+                    role = require_role(self, {"admin", "finance", "user"})
                     data = payload.get("data", [])
                     period = payload.get("period", "2026-01")
                     if not data:
@@ -716,7 +716,6 @@ class AppHandler(BaseHTTPRequestHandler):
 
                     employee_rows = conn.execute("SELECT id, name FROM employees WHERE active = 1").fetchall()
                     name_map = { _normalize(row['name']): row['id'] for row in employee_rows }
-                    # data = [{"name": "...", "base_salary": 0, "phone_quota": 0, "bpjs_kantor": 0, "bpjs_sendiri": 0, "debt": 0, "rapel_thr": 0, "divisions": ["DIV"]}]
                     ensure_salary_period(conn, period)
                     created = 0
                     updated = 0
@@ -733,72 +732,103 @@ class AppHandler(BaseHTTPRequestHandler):
                         if existing_id:
                             existing = conn.execute("SELECT id FROM employees WHERE id = ?", (existing_id,)).fetchone()
 
-                        salary_values = [
-                            float(row.get("base_salary") or 0),
-                            float(row.get("phone_quota") or 0),
-                            float(row.get("bpjs_kantor") or 0),
-                            float(row.get("bpjs_sendiri") or 0),
-                            float(row.get("debt") or 0),
-                            float(row.get("rapel_thr") or 0),
-                        ]
-                        any_nonzero = any(v for v in salary_values)
+                        if role == "user":
+                            # user role: only update bpjs_kantor and bpjs_sendiri for existing employees
+                            # never create new employees, never touch other fields or divisions
+                            if not existing:
+                                continue
+                            bpjs_kantor = float(row.get("bpjs_kantor") or 0)
+                            bpjs_sendiri = float(row.get("bpjs_sendiri") or 0)
+                            if bpjs_kantor or bpjs_sendiri:
+                                conn.execute(
+                                    """
+                                    INSERT INTO monthly_salaries (
+                                      period, employee_id, bpjs_kantor, bpjs_sendiri, updated_at
+                                    ) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+                                    ON CONFLICT(period, employee_id) DO UPDATE SET
+                                      bpjs_kantor = excluded.bpjs_kantor,
+                                      bpjs_sendiri = excluded.bpjs_sendiri,
+                                      updated_at = CURRENT_TIMESTAMP
+                                    """,
+                                    (period, existing["id"], bpjs_kantor, bpjs_sendiri),
+                                )
+                                updated += 1
+                            name_map[_normalize(name)] = existing["id"]
+                        else:
+                            # Map field names to their values; null means "not present in Excel" -> skip update
+                            def _fval(v):
+                                return None if v is None else float(v)
 
-                        if existing:
-                            # Update salary for current period only when there are non-zero values
-                            if any_nonzero:
+                            field_map = {
+                                "base_salary":  _fval(row.get("base_salary")),
+                                "phone_quota":  _fval(row.get("phone_quota")),
+                                "bpjs_kantor":  _fval(row.get("bpjs_kantor")),
+                                "bpjs_sendiri": _fval(row.get("bpjs_sendiri")),
+                                "debt":         _fval(row.get("debt")),
+                                "rapel_thr":    _fval(row.get("rapel_thr")),
+                            }
+                            # Only fields explicitly present in Excel (non-None)
+                            present = {k: v for k, v in field_map.items() if v is not None}
+
+                            if existing:
+                                # Update only the fields present in the Excel row
+                                if present:
+                                    set_clause = ", ".join(f"{k} = ?" for k in present)
+                                    values = list(present.values())
+                                    conn.execute(
+                                        f"""
+                                        INSERT INTO monthly_salaries (
+                                          period, employee_id, {', '.join(present.keys())}, updated_at
+                                        ) VALUES (?, ?, {', '.join('?' for _ in present)}, CURRENT_TIMESTAMP)
+                                        ON CONFLICT(period, employee_id) DO UPDATE SET
+                                          {set_clause},
+                                          updated_at = CURRENT_TIMESTAMP
+                                        """,
+                                        (period, existing["id"], *values, *values),
+                                    )
+                                    updated += 1
+
+                                # Update divisions from Excel (replace)
+                                divisions = row.get("divisions") or []
+                                if divisions:
+                                    sync_employee_divisions(conn, existing["id"], divisions)
+                                    divisions_synced += 1
+
+                                name_map[_normalize(name)] = existing["id"]
+                            else:
+                                # Create new employee with divisions from Excel
+                                emp_role = row.get("access_role", "user")
+                                new_username = unique_username(conn, name)
+                                cursor = conn.execute(
+                                    "INSERT INTO employees (name, username, password, access_role) VALUES (?, ?, ?, ?)",
+                                    (name, new_username, new_username, emp_role),
+                                )
+                                new_id = cursor.lastrowid
+                                divisions = row.get("divisions") or []
+                                if divisions:
+                                    sync_employee_divisions(conn, new_id, divisions)
+
+                                name_map[_normalize(name)] = new_id
+
+                                # For new employees, use 0 for any missing fields
+                                insert_values = [
+                                    float(field_map.get("base_salary") or 0),
+                                    float(field_map.get("phone_quota") or 0),
+                                    float(field_map.get("bpjs_kantor") or 0),
+                                    float(field_map.get("bpjs_sendiri") or 0),
+                                    float(field_map.get("debt") or 0),
+                                    float(field_map.get("rapel_thr") or 0),
+                                ]
                                 conn.execute(
                                     """
                                     INSERT INTO monthly_salaries (
                                       period, employee_id, base_salary, phone_quota, bpjs_kantor,
                                       bpjs_sendiri, debt, rapel_thr, updated_at
                                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                                    ON CONFLICT(period, employee_id) DO UPDATE SET
-                                      base_salary = excluded.base_salary,
-                                      phone_quota = excluded.phone_quota,
-                                      bpjs_kantor = excluded.bpjs_kantor,
-                                      bpjs_sendiri = excluded.bpjs_sendiri,
-                                      debt = excluded.debt,
-                                      rapel_thr = excluded.rapel_thr,
-                                      updated_at = CURRENT_TIMESTAMP
                                     """,
-                                    (period, existing["id"], *salary_values),
+                                    (period, new_id, *insert_values),
                                 )
-                                updated += 1
-
-                            # Update divisions from Excel (replace)
-                            divisions = row.get("divisions") or []
-                            if divisions:
-                                sync_employee_divisions(conn, existing["id"], divisions)
-                                divisions_synced += 1
-
-                            # ensure name_map contains this id for subsequent rows
-                            name_map[_normalize(name)] = existing["id"]
-                        else:
-                            # Create new employee with divisions from Excel
-                            role = row.get("access_role", "user")
-                            cursor = conn.execute(
-                                "INSERT INTO employees (name, access_role) VALUES (?, ?)",
-                                (name, role),
-                            )
-                            new_id = cursor.lastrowid
-                            divisions = row.get("divisions") or []
-                            if divisions:
-                                sync_employee_divisions(conn, new_id, divisions)
-
-                            # add to name_map so subsequent rows can match newly created employee
-                            name_map[_normalize(name)] = new_id
-
-                            # Save salary for new employee
-                            conn.execute(
-                                """
-                                INSERT INTO monthly_salaries (
-                                  period, employee_id, base_salary, phone_quota, bpjs_kantor,
-                                  bpjs_sendiri, debt, rapel_thr, updated_at
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                                """,
-                                (period, new_id, *salary_values),
-                            )
-                            created += 1
+                                created += 1
                     conn.commit()
                     self.send_json({
                         "ok": True,
