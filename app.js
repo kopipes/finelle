@@ -413,7 +413,7 @@ function renderSalary() {
         const canEdit = editFields.includes(field);
         if (!canView) return `<td class="hidden-cell"></td>`;
         const val = Math.round(row[field] || 0);
-        const displayVal = val > 0 ? new Intl.NumberFormat("id-ID").format(val) : "";
+        const displayVal = val !== 0 ? new Intl.NumberFormat("id-ID").format(val) : "";
         return `
           <td>
             <label class="currency-field">
@@ -654,18 +654,19 @@ async function uploadExcel(file) {
     reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
+        const workbook = XLSX.read(data, { type: "array", cellFormula: false, cellNF: false });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet);
         
         // Make header matching tolerant: normalize header keys
+        // Build headerMap from ALL rows to catch keys missing in the first row (sparse columns)
         const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
         const headerMap = {};
-        if (json.length > 0) {
-          Object.keys(json[0]).forEach((k) => {
+        json.forEach((r) => {
+          Object.keys(r).forEach((k) => {
             headerMap[norm(k)] = k;
           });
-        }
+        });
 
         const getField = (row, variants) => {
           for (const v of variants) {
@@ -683,12 +684,18 @@ async function uploadExcel(file) {
           const divRaw = String(getField(row, ["Divisi", "divisi"]) || "").trim();
           const divisions = divRaw ? divRaw.split(/[,;|]+/).map((d) => d.trim()).filter(Boolean) : [];
           
-          // Parse numeric fields
+          // Parse numeric fields — also evaluate simple Excel formulas like =-277500-110863
           const parseNum = (val) => {
             if (typeof val === "number") return val;
             if (!val) return 0;
-            // Remove currency symbols and non-digit characters (keep minus and dot)
-            const cleaned = String(val).replace(/[^0-9\-\.,]/g, "").replace(/\./g, "").replace(/,/g, "");
+            const str = String(val).trim();
+            // Evaluate simple formula: starts with = and contains only digits, spaces, +, -, *, /, (, ), .
+            if (str.startsWith("=")) {
+              const expr = str.slice(1).replace(/[^0-9+\-*/().\s]/g, "");
+              try { return Function('"use strict"; return (' + expr + ')')() || 0; } catch (e) { return 0; }
+            }
+            // Remove currency symbols and non-digit characters (keep minus, dot, comma)
+            const cleaned = str.replace(/[^0-9\-\.\,]/g, "").replace(/\./g, "").replace(/,/g, "");
             return parseFloat(cleaned) || 0;
           };
           
@@ -720,7 +727,6 @@ async function uploadExcel(file) {
         const uploadData = state.role === "user"
           ? processed.map(({ name, bpjs_sendiri, bpjs_kantor }) => ({ name, bpjs_sendiri, bpjs_kantor }))
           : processed;
-
         // Send to server
         const result = await api("/api/upload-excel", {
           method: "POST",

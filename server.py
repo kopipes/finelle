@@ -193,8 +193,8 @@ def ensure_employee_auth_columns(conn):
                 (username, employee_id),
             )
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS uq_employees_username ON employees(username)")
-    # Ensure can_login is set for existing rows and default it off
-    conn.execute("UPDATE employees SET can_login = 0 WHERE can_login IS NULL OR can_login = '' OR can_login != 0")
+    # Ensure can_login is set for any rows where it is NULL (new column migration only)
+    conn.execute("UPDATE employees SET can_login = 0 WHERE can_login IS NULL")
 
 
 def connect():
