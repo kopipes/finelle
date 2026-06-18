@@ -36,6 +36,7 @@ DIVISIONS = [
     "Operational",
     "Creative",
     "Commerce",
+    "Direksi",
 ]
 
 SEED_EMPLOYEES = [
