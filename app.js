@@ -103,9 +103,9 @@ function totalSalary(row) {
   return (
     Number(row.base_salary || 0) +
     Number(row.phone_quota || 0) +
-    Number(row.bpjs_kantor || 0) +
     Number(row.bpjs_sendiri || 0) +
     Number(row.rapel_thr || 0) -
+    Number(row.bpjs_kantor || 0) -
     Number(row.debt || 0)
   );
 }

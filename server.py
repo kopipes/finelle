@@ -330,9 +330,9 @@ def salary_total(row):
     return (
         float(row.get("base_salary") or 0)
         + float(row.get("phone_quota") or 0)
-        + float(row.get("bpjs_kantor") or 0)
         + float(row.get("bpjs_sendiri") or 0)
         + float(row.get("rapel_thr") or 0)
+        - float(row.get("bpjs_kantor") or 0)
         - float(row.get("debt") or 0)
     )
 
