@@ -104,8 +104,8 @@ function totalSalary(row) {
     Number(row.base_salary || 0) +
     Number(row.phone_quota || 0) +
     Number(row.bpjs_kantor || 0) +
+    Number(row.bpjs_sendiri || 0) +
     Number(row.rapel_thr || 0) -
-    Number(row.bpjs_sendiri || 0) -
     Number(row.debt || 0)
   );
 }
@@ -391,7 +391,7 @@ function renderSalary() {
       <tr>
         <th class="sticky-col">Nama Karyawan</th>
         ${headerRow}
-        ${showTotal ? '<th class="right">Total Gaji</th>' : '<th class="hidden-cell"></th>'}
+        ${showTotal ? '<th class="right">Total PV</th>' : '<th class="hidden-cell"></th>'}
       </tr>
     `;
   }
