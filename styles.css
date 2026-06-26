@@ -463,6 +463,12 @@ h3 { font-size: 1rem; }
   border-bottom: 1px solid var(--border);
 }
 
+.panel-head--row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 .panel-head h3 {
   font-size: 0.9375rem;
   font-weight: 600;

@@ -244,6 +244,32 @@ function renderKpiGrid(target, cards) {
   `).join("");
 }
 
+function exportDivisiToXls() {
+  const dashboard = state.dashboard;
+  if (!dashboard || !dashboard.division_totals) {
+    showToast("Tidak ada data untuk diekspor.", true);
+    return;
+  }
+
+  const rows = dashboard.division_totals
+    .filter((row) => row.total > 0)
+    .map((row) => ({ Divisi: row.division, Total: row.total }));
+
+  if (rows.length === 0) {
+    showToast("Tidak ada data divisi untuk diekspor.", true);
+    return;
+  }
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  ws["!cols"] = [{ wch: 28 }, { wch: 18 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Distribusi Divisi");
+
+  const period = state.period || "export";
+  XLSX.writeFile(wb, `distribusi-divisi-${period}.xlsx`);
+}
+
 function renderDashboard() {
   const dashboard = state.dashboard;
   const topDivision = dashboard.top_division;
@@ -870,6 +896,11 @@ function attachEvents() {
     // Upload Excel button
     if (event.target.closest("#uploadExcelBtn")) {
       $("#uploadExcel").click();
+    }
+
+    // Export Distribusi Divisi to Excel
+    if (event.target.closest("#exportDivisiBtn")) {
+      exportDivisiToXls();
     }
 
     if (event.target.closest("#loginSubmit")) {
