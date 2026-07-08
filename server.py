@@ -715,7 +715,7 @@ class AppHandler(BaseHTTPRequestHandler):
                         s = ''.join(ch for ch in s.lower() if ch.isalnum())
                         return s
 
-                    employee_rows = conn.execute("SELECT id, name FROM employees WHERE active = 1").fetchall()
+                    employee_rows = conn.execute("SELECT id, name FROM employees").fetchall()
                     name_map = { _normalize(row['name']): row['id'] for row in employee_rows }
                     ensure_salary_period(conn, period)
                     created = 0
@@ -772,6 +772,12 @@ class AppHandler(BaseHTTPRequestHandler):
                             present = {k: v for k, v in field_map.items() if v is not None}
 
                             if existing:
+                                # Reactivate if previously soft-deleted
+                                conn.execute(
+                                    "UPDATE employees SET active = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND active = 0",
+                                    (existing["id"],),
+                                )
+
                                 # Update only the fields present in the Excel row
                                 if present:
                                     set_clause = ", ".join(f"{k} = ?" for k in present)
